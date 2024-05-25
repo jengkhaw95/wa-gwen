@@ -1,0 +1,24 @@
+{
+  "name": "wa-gwen",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node dist/wa.js",
+    "dev": "tsc -w",
+    "mouse": "node dist/mouse.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "execa": "^9.1.0",
+    "node-window-manager": "^2.2.4",
+    "robotjs": "^0.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "typescript": "^5.4.5"
+  }
+}
