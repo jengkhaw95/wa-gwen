@@ -21,11 +21,11 @@ const config = {
     { x: 27, y: 203 },
     { x: 44, y: 214 },
   ],
-  // { x: 11, y: 348 }
-  // { x: 356, y: 412 }
+  // { x: 91, y: 352 }
+  // { x: 343, y: 403 }
   contactSelectZone: [
-    { x: 11, y: 348 },
-    { x: 356, y: 412 },
+    { x: 91, y: 352 },
+    { x: 343, y: 403 },
   ],
   // { x: 461, y: 838 }
   // { x: 478, y: 860 }
@@ -108,8 +108,11 @@ function action_focusWindow(targetPath: string) {
 async function main() {
   const { execa } = await import("execa");
 
-  const content = await readFile("./wa-config/message.txt", "utf-8");
-  const contactRaw = await readFile("./wa-config/contact.txt", "utf-8");
+  const lang = await readFile("./wa-config/lang.txt", "utf-8");
+  console.log(`Using language: ${lang}`);
+
+  const content = await readFile(`./wa-config/message-${lang}.txt`, "utf-8");
+  const contactRaw = await readFile(`./wa-config/contact-${lang}.txt`, "utf-8");
   const contacts = contactRaw.split("\n").filter((d) => !!d.trim());
 
   const targetWindow = action_focusWindow("Google Chrome.app");
@@ -130,8 +133,55 @@ async function main() {
     robot.keyTap("v", "command");
     await sleep(1_500, 200);
 
-    clickBoundary(config.contactSelectZone);
+    // { x: 82, y: 313, color: '377e6a' }
+    const isContactFound = robot.getPixelColor(82, 313) === "377e6a";
+    // { x: 98, y: 314, color: '377e6a' }
+    const isContactValid = robot.getPixelColor(98, 314) !== "377e6a";
+
+    if (!isContactFound || !isContactValid) {
+      throw new Error("Did not find contact");
+    }
+
+    // Click to select contact
+    // clickBoundary(config.contactSelectZone);
+
+    // Enter to select contact
+    robot.keyTap("enter");
+
     await sleep(500);
+  }
+
+  async function action_findAndSelectContact_v2(contact: string) {
+    robot.keyTap("k", "command");
+    await sleep(1_500);
+
+    action_copyText(contact);
+    await sleep(500);
+    robot.keyTap("v", "command");
+    await sleep(2_000, 200);
+
+    // TODO check if contact is valid
+    // not { x: 590, y: 368, color: '0d141a' }
+    // not { x: 606, y: 370, color: '377e6a' }
+    // is { x: 517, y: 402, color: '2d3941' } Optional
+    // is { x: 576, y: 370, color: '377e6a' }
+
+    const isContactValid =
+      robot.getPixelColor(576, 370) === "377e6a" &&
+      robot.getPixelColor(590, 368) !== "0d141a" &&
+      robot.getPixelColor(606, 370) !== "0d141a" &&
+      robot.getPixelColor(606, 370) !== "377e6a";
+
+    if (!isContactValid) {
+      console.log("Did not find contact");
+      robot.keyTap("escape");
+      return false;
+      // throw new Error("Did not find contact");
+    }
+
+    robot.keyTap("enter");
+
+    return true;
   }
 
   // Input attachments
@@ -170,10 +220,17 @@ async function main() {
     await sleep(300);
 
     // Send message
-    robot.keyTap("enter");
+    // robot.keyTap("enter");
     await sleep(500);
     robot.keyTap("escape");
     await sleep(500);
+
+    // { x: 580, y: 397, color: '242e34' }
+    console.log(robot.getPixelColor(580, 397));
+    let isExited = robot.getPixelColor(580, 397) === "242e34";
+    if (!isExited) {
+      throw new Error("Did not exit chat");
+    }
   }
 
   if (!contacts.length) {
@@ -183,14 +240,17 @@ async function main() {
 
   // Start sending
   for (const i in contacts) {
+    await sleep(1_000);
     const contact = contacts[i];
     console.log(`[${i}/${contacts.length}] Sending message to ${contact}...`);
-    await action_findAndSelectContact(contact);
+    const isContactValid = await action_findAndSelectContact_v2(contact);
+    if (!isContactValid) {
+      continue;
+    }
     await sleep(200);
     await action_inputAttachments();
     await sleep(200);
     await action_inputText();
-    await sleep(500);
   }
   console.log("Done!");
 }
